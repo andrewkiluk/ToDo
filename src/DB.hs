@@ -72,22 +72,21 @@ buildListSummary values = ListSummary {Lists.summaryId=i, Lists.summaryName=n}
 
 lookupExistingList :: Connection -> ID -> IO(List)
 lookupExistingList connection id = do
-    results <- quickQuery' connection 
-        ("SELECT Lists.name, Lists.id, Items.id, Items.value, Items.marked FROM Lists"
-        ++ " LEFT JOIN Items ON Lists.id=Items.list_id"
-        ++ " WHERE Lists.id=?") [toSql $ toString id]
-    return $ rowsToList results
+    listRows <- quickQuery' connection "SELECT name, id FROM Lists WHERE Lists.id=?" [toSql $ toString id]
+    itemRows <- quickQuery' connection 
+        ("SELECT id, value, marked FROM Items WHERE list_id =?") [toSql $ toString id]
+    return $ rowsToList (listRows !! 0) itemRows
 
-rowsToList :: [[SqlValue]] -> List
-rowsToList rows = List {listId=id, listName=name, items=map buildListItem rows}
-    where name = TE.decodeUtf8 $ fromSql ((rows !! 0) !!0) :: ListName
-          id   = idFromSql ((rows !! 0) !! 1)
+rowsToList :: [SqlValue] -> [[SqlValue]] -> List
+rowsToList listRow itemRows = List {listId=id, listName=name, items=map buildListItem itemRows}
+    where name = TE.decodeUtf8 $ fromSql (listRow !! 0) :: ListName
+          id   = idFromSql (listRow !! 1)
 
 buildListItem :: [SqlValue] -> ListItem
 buildListItem values = ListItem {Lists.itemId=i, Lists.value=v, Lists.done=d }
-    where i = idFromSql $ values !! 2
-          v = TE.decodeUtf8 $ fromSql (values !! 3) :: ListEntry
-          d = (fromSql (values !! 4) :: Int) > 0
+    where i = idFromSql $ values !! 0
+          v = TE.decodeUtf8 $ fromSql (values !! 1) :: ListEntry
+          d = (fromSql (values !! 2) :: Int) > 0
 
 listExists :: Connection -> ID -> IO(Bool)
 listExists connection id = do
