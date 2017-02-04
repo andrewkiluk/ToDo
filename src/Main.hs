@@ -27,7 +27,7 @@ main = do
         get     "/lists/:id"                    $ readListAction connection
         delete  "/lists/:id"                    $ deleteListAction connection
         post    "/lists/:id/items"              $ addItemAction connection
-        put     "/lists/:listiId/items/:itemId" $ markItemAction connection
+        put     "/lists/:listId/items/:itemId"  $ markItemAction connection
         delete  "/lists/:listId/items/:itemId"  $ deleteItemAction connection
 
         notFound $ html "Nothing found here :("
