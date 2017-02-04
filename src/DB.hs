@@ -22,9 +22,12 @@ addList connection name = do
 
 deleteList :: Connection -> ID -> IO(Bool)
 deleteList connection id = do 
-    rows <- run connection "DELETE FROM Lists WHERE id=?" [toSql $ toString id]
-    commit connection
-    return $ rows == 1
+    exists <- listExists connection id
+    if exists
+       then do
+           deleteExistingListItems connection id
+           deleteExistingList      connection id
+       else return False
 
 addItem :: Connection -> ID -> ListEntry -> IO(Maybe List)
 addItem connection listID newEntry = do
@@ -95,4 +98,16 @@ listExists connection id = do
 
 idFromSql :: SqlValue -> ID
 idFromSql value = fromJust $ fromString (fromSql value :: String)
+
+deleteExistingListItems :: Connection -> ID -> IO([Bool])
+deleteExistingListItems connection id = do
+    list <- lookupExistingList connection id
+    let itemIds = map itemId (items list)
+    sequence $ map (deleteItem connection id) itemIds
+
+deleteExistingList :: Connection -> ID -> IO(Bool)
+deleteExistingList connection id = do
+    rows <- run connection "DELETE FROM Lists WHERE id=?" [toSql $ toString id]
+    commit connection
+    return $ rows == 1
 
