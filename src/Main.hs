@@ -52,7 +52,7 @@ readListAction connection = do
     case fromString id of
          Just uuid -> do
             list <- liftIO . DB.lookupList connection $ uuid
-            json list
+            maybe (status notFound404) json list
          Nothing -> status badRequest400
 
 deleteListAction connection = do
