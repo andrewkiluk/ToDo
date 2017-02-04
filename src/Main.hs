@@ -7,6 +7,7 @@ import Data.UUID
 import Database.HDBC
 import Database.HDBC.Sqlite3 (connectSqlite3)
 import Network.HTTP.Types.Status as Status
+import Network.Wai.Middleware.RequestLogger (logStdout)
 import Web.Scotty
 
 import Lists
@@ -18,6 +19,8 @@ main = do
     DB.lookupList connection (fromJust $ fromString "85349cf0-b692-4e81-b910-24c4839a1f17") >>= print . show
 
     scotty 3000 $ do
+        middleware $ logStdout
+
         get     "/"                             $ html "WooHoo ToDo!!!"
         get     "/lists"                        $ listAllAction connection
         post    "/lists"                        $ addListAction connection
@@ -26,6 +29,7 @@ main = do
         post    "/lists/:id/items"              $ addItemAction connection
         put     "/lists/:listiId/items/:itemId" $ markItemAction connection
         delete  "/lists/:listId/items/:itemId"  $ deleteItemAction connection
+
         notFound $ html "Nothing found here :("
 
 ---------------------------
