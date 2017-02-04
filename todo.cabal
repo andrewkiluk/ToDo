@@ -36,3 +36,4 @@ executable todo
                      , time
                      , aeson
                      , uuid
+                     , uuid-aeson >= 0.1.0.0

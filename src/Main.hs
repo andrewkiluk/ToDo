@@ -2,6 +2,7 @@
 import Control.Monad.IO.Class
 import qualified Data.Text.Lazy as Text
 import Data.Maybe
+import qualified Data.Aeson
 import Data.UUID
 import Database.HDBC
 import Database.HDBC.Sqlite3 (connectSqlite3)
@@ -13,11 +14,11 @@ import DB
 
 main = do
     connection <- connectSqlite3 "todo.db"
-    DB.lookupList connection (fromJust $ fromString "525c0a1f-fcf3-4685-bba0-6c5c7ee8efd7") >>= print . show
-    DB.listAll connection >>= print . show
+    DB.lookupList connection (fromJust $ fromString "85349cf0-b692-4e81-b910-24c4839a1f17") >>= print . Data.Aeson.encode
+    DB.lookupList connection (fromJust $ fromString "85349cf0-b692-4e81-b910-24c4839a1f17") >>= print . show
 
     scotty 3000 $ do
-        get     "/" $ html "Let's get this ToDone!"
+        get     "/"                             $ html "WooHoo ToDo!!!"
         get     "/lists"                        $ listAllAction connection
         post    "/lists"                        $ addListAction connection
         get     "/lists/:id"                    $ readListAction connection
@@ -33,13 +34,13 @@ main = do
 
 listAllAction connection = do
     lists <- liftIO $ DB.listAll connection
-    html . Text.pack $ show lists
+    json lists
 
 addListAction connection = do
     name <- param "name"
     id <- liftIO $ DB.addList connection name
     maybe (status notFound404)
-          (\newId -> html . Text.pack $ "{id:" ++ toString newId ++ "}")
+          (json . ListCreation)
           id
 
 readListAction connection = do
@@ -47,7 +48,7 @@ readListAction connection = do
     case fromString id of
          Just uuid -> do
             list <- liftIO . DB.lookupList connection $ uuid
-            html . Text.pack . show $ list
+            json list
          Nothing -> status badRequest400
 
 deleteListAction connection = do
@@ -56,8 +57,8 @@ deleteListAction connection = do
          Just uuid -> do
             worked <- liftIO . DB.deleteList connection $ uuid
             if worked
-               then html . Text.pack $ "Deleted!"
-               else html . Text.pack $ "No list with that ID!"
+               then status accepted202
+               else status notFound404
          Nothing -> status badRequest400
 
 addItemAction connection = do
@@ -67,7 +68,7 @@ addItemAction connection = do
         Just listId -> do
             updatedList <- liftIO $ DB.addItem connection listId entry
             maybe (status internalServerError500)
-                  (\l -> html . Text.pack $ show l)
+                  json
                   updatedList
         Nothing -> status badRequest400
 
@@ -80,9 +81,9 @@ deleteItemAction connection = do
                  Just itemUuid -> do
                     worked <- liftIO $ DB.deleteItem connection listUuid itemUuid
                     if worked
-                        then html $ Text.pack "Deleted!"
-                        else html $ Text.pack "No matching list item!"
-                 Nothing -> html "Not a valid Item UUID!"
+                        then status accepted202
+                        else status notFound404
+                 Nothing -> status badRequest400
          Nothing -> status badRequest400
 
 markItemAction connection = do
@@ -97,8 +98,8 @@ markItemAction connection = do
                         Just isMarked -> do
                             worked <- liftIO $ DB.setItemStatus connection listUuid itemUuid isMarked
                             if worked
-                                then html $ Text.pack "Deleted!"
-                                else html $ Text.pack "No matching list item!"
+                                then status accepted202
+                                else status notFound404
                         Nothing -> status badRequest400
                  Nothing -> status badRequest400
          Nothing -> status badRequest400

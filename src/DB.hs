@@ -3,6 +3,7 @@
 module DB where 
 
 import Data.Maybe
+import qualified Data.Text.Encoding as TE
 import Database.HDBC
 import Database.HDBC.Sqlite3
 import Database.HDBC.SqlValue
@@ -67,7 +68,7 @@ lookupList connection id = do
 buildListSummary :: [SqlValue] -> ListSummary
 buildListSummary values = ListSummary {Lists.summaryId=i, Lists.summaryName=n}
     where i = idFromSql (values !! 0)
-          n = fromSql (values !! 1) :: ListEntry
+          n = TE.decodeUtf8 $ fromSql (values !! 1) :: ListEntry
 
 lookupExistingList :: Connection -> ID -> IO(List)
 lookupExistingList connection id = do
@@ -79,13 +80,13 @@ lookupExistingList connection id = do
 
 rowsToList :: [[SqlValue]] -> List
 rowsToList rows = List {listId=id, listName=name, items=map buildListItem rows}
-    where name = fromSql ((rows !! 0) !!0) :: ListName
+    where name = TE.decodeUtf8 $ fromSql ((rows !! 0) !!0) :: ListName
           id   = idFromSql ((rows !! 0) !! 1)
 
 buildListItem :: [SqlValue] -> ListItem
 buildListItem values = ListItem {Lists.itemId=i, Lists.value=v, Lists.done=d }
     where i = idFromSql $ values !! 2
-          v = fromSql (values !! 3) :: ListEntry
+          v = TE.decodeUtf8 $ fromSql (values !! 3) :: ListEntry
           d = (fromSql (values !! 4) :: Int) > 0
 
 listExists :: Connection -> ID -> IO(Bool)
